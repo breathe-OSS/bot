@@ -75,6 +75,24 @@ async def fetch_aqi_data(zone_id):
                 return None
             return await response.json()
 
+def get_us_aqi_category(us_aqi):
+    """Generate US AQI category label"""
+    if not isinstance(us_aqi, int):
+        return "N/A"
+    
+    if us_aqi <= 50:
+        return "Good"
+    elif us_aqi <= 100:
+        return "Moderate"
+    elif us_aqi <= 150:
+        return "Unhealthy for Sensitive Groups"
+    elif us_aqi <= 200:
+        return "Unhealthy"
+    elif us_aqi <= 300:
+        return "Very Unhealthy"
+    else:
+        return "Hazardous"
+
 def create_aqi_embed(data):
     """Create an embed from AQI data"""
     zone_name = data.get('zone_name', 'Unknown Location')
@@ -109,6 +127,11 @@ def create_aqi_embed(data):
     embed.add_field(name="NAQI", value=f"**{aqi}**", inline=True)
     embed.add_field(name="US AQI", value=f"**{us_aqi}**", inline=True)
     embed.add_field(name="Primary Pollutant", value=f"**{pollutant}**", inline=True)
+    
+    # Add AQI category
+    category = get_us_aqi_category(us_aqi)
+    if category != "N/A":
+        embed.add_field(name=category, value="*Label based on US AQI*", inline=False)
     
     concentrations = []
     if pm2_5 is not None:
