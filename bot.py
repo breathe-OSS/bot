@@ -93,12 +93,13 @@ def create_aqi_embed(data):
     co = raw_data.get('co')
     ch4 = raw_data.get('ch4')
 
-    if isinstance(aqi, int):
-        if aqi <= 50: color = 0x009966
-        elif aqi <= 100: color = 0xffde33
-        elif aqi <= 200: color = 0xff9933
-        elif aqi <= 300: color = 0xcc0033
-        elif aqi <= 400: color = 0x660099
+    # Color based on US AQI
+    if isinstance(us_aqi, int):
+        if us_aqi <= 50: color = 0x00e400
+        elif us_aqi <= 100: color = 0xffff00
+        elif us_aqi <= 150: color = 0xff7e00
+        elif us_aqi <= 200: color = 0xff0000
+        elif us_aqi <= 300: color = 0x8f3f97
         else: color = 0x7e0023
     else:
         color = 0x808080
