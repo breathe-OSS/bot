@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import aiohttp
 import os
+import json
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 
@@ -9,6 +10,10 @@ load_dotenv()
 
 TOKEN = os.getenv('DISCORD_TOKEN')
 BREATHE_API_URL = "https://api.breatheoss.app/aqi/{zone_id}"
+
+# Load zone data from JSON
+with open('zones.json', 'r', encoding='utf-8') as f:
+    ZONE_DATA = json.load(f)
 
 def format_pollutant(pollutant):
     """Convert pollutant names to use Unicode subscript characters"""
@@ -28,34 +33,6 @@ def format_pollutant(pollutant):
         return pollutant_upper.replace('CH4', 'CH₄')
     else:
         return pollutant_upper
-
-ZONE_DATA = [
-    {"id": "anantnag_city", "name": "Anantnag", "emoji": "🏔️"},
-    {"id": "bandipora_town", "name": "Bandipora", "emoji": "🏔️"},
-    {"id": "baramulla_town", "name": "Baramulla", "emoji": "🏔️"},
-    {"id": "doda_town", "name": "Doda", "emoji": "🏔️"},
-    {"id": "ganderbal_town", "name": "Ganderbal", "emoji": "🏔️"},
-    {"id": "handwara_town", "name": "Handwara", "emoji": "🏔️"},
-    {"id": "jammu_city", "name": "Jammu", "emoji": "🏙️"},
-    {"id": "kargil_town", "name": "Kargil", "emoji": "🏔️"},
-    {"id": "katra_town", "name": "Katra", "emoji": "🏔️"},
-    {"id": "kathua_town", "name": "Kathua", "emoji": "🏭"},
-    {"id": "kishtwar_town", "name": "Kishtwar", "emoji": "🏔️"},
-    {"id": "kulgam_town", "name": "Kulgam", "emoji": "🏔️"},
-    {"id": "kupwara_town", "name": "Kupwara", "emoji": "🏔️"},
-    {"id": "leh", "name": "Leh", "emoji": "🏙️"},
-    {"id": "pahalgam_town", "name": "Pahalgam", "emoji": "🌲"},
-    {"id": "poonch_town", "name": "Poonch", "emoji": "🏔️"},
-    {"id": "pulwama_town", "name": "Pulwama", "emoji": "🏔️"},
-    {"id": "rajouri_town", "name": "Rajouri", "emoji": "🏔️"},
-    {"id": "ramban_town", "name": "Ramban", "emoji": "🏔️"},
-    {"id": "reasi_town", "name": "Reasi", "emoji": "🏔️"},
-    {"id": "samba_town", "name": "Samba", "emoji": "🏭"},
-    {"id": "shopian_town", "name": "Shopian", "emoji": "🍎"},
-    {"id": "sopore_town", "name": "Sopore", "emoji": "🏔️"},
-    {"id": "srinagar", "name": "Srinagar", "emoji": "🏙️"},
-    {"id": "udhampur_city", "name": "Udhampur", "emoji": "🏙️"}
-]
 
 class LocationSelect(discord.ui.Select):
     def __init__(self):
