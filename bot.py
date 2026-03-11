@@ -149,6 +149,15 @@ def create_aqi_embed(data):
     if concentrations:
         embed.add_field(name="Pollutant Concentrations", value="\n".join(concentrations), inline=False)
     
+    # Calculate cigarette equivalence
+    if pm2_5 is not None:
+        cigarettes = pm2_5 / 22
+        embed.add_field(
+            name="Equivalent PM₂.₅ inhalation today", 
+            value=f"🚬 **{cigarettes:.2f}** cigarettes", 
+            inline=False
+        )
+    
     if isinstance(temp, float):
         embed.add_field(name="Temperature", value=f"{temp:.1f}°C", inline=True)
     if isinstance(humidity, (int, float)):
