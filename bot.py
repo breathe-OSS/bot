@@ -131,7 +131,7 @@ def create_aqi_embed(data):
         cigarettes = pm2_5 / 22
         embed.add_field(
             name="Equivalent PM₂.₅ inhalation today", 
-            value=f"🚬 **{cigarettes:.2f}** cigarettes", 
+            value=f"🚬 **≈ {cigarettes:.1f}** cigarettes", 
             inline=False
         )
     
