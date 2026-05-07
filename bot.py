@@ -225,6 +225,7 @@ def create_zones_embed():
     return embed
 
 @bot.command()
+@commands.cooldown(15, 60, commands.BucketType.user)
 async def aqi(ctx, *locations):
     """Check AQI for one or more locations. Usage: .aqi OR .aqi jammu srinagar OR .aqi zones"""
     if not locations:
@@ -266,6 +267,11 @@ async def aqi(ctx, *locations):
         elif fetch_error:
             await ctx.send("⚠️ Error fetching data for one or more locations.")
 
+@aqi.error
+async def aqi_error(ctx, error):
+    if isinstance(error, commands.CommandOnCooldown):
+        await ctx.send(f"⏳ **Slow down!** Please wait {error.retry_after:.1f} seconds before checking the AQI again.")
+
 async def location_autocomplete(
     interaction: discord.Interaction,
     current: str,
@@ -281,6 +287,7 @@ async def location_autocomplete(
 @bot.tree.command(name="aqi", description="Check real-time air quality for locations")
 @discord.app_commands.describe(location="Select a location to check air quality")
 @discord.app_commands.autocomplete(location=location_autocomplete)
+@discord.app_commands.checks.cooldown(15, 60, key=lambda i: (i.guild_id, i.user.id))
 async def aqi_slash(interaction: discord.Interaction, location: str = None):
     """Slash command to check AQI with autocomplete"""
     if not location:
@@ -303,6 +310,11 @@ async def aqi_slash(interaction: discord.Interaction, location: str = None):
                     await interaction.followup.send(f"⚠️ Could not fetch data for {location}")
             except Exception as e:
                 await interaction.followup.send(f"⚠️ Error fetching data for {location}: {e}")
+
+@aqi_slash.error
+async def aqi_slash_error(interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
+    if isinstance(error, discord.app_commands.CommandOnCooldown):
+        await interaction.response.send_message(f"⏳ **Slow down!** Please wait {error.retry_after:.1f} seconds before checking the AQI again.", ephemeral=True)
 
 @bot.tree.command(name="zones", description="List all available locations for air quality monitoring")
 async def zones_slash(interaction: discord.Interaction):
