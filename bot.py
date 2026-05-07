@@ -196,7 +196,7 @@ def create_aqi_embed(data):
         date_str = dt_ist.strftime('%d %b %Y')
         embed.add_field(name="Last Updated", value=f"{date_str}\n{time_str} IST", inline=True)
 
-    embed.set_footer(text="Made with ❤️ by Aaditya & Siddhi • Visit breatheoss.app for more info")
+    embed.set_footer(text="Visit breatheoss.app for more info")
     
     return embed
 
@@ -220,7 +220,7 @@ def create_zones_embed():
     zones_text = "\n".join([f"{zone['emoji']} **{zone['name']}**" for zone in ZONE_DATA])
     
     embed.add_field(name="Regions", value=zones_text, inline=False)
-    embed.set_footer(text="Made with ❤️ by Aaditya & Siddhi • Visit breatheoss.app for more info")
+    embed.set_footer(text="Visit breatheoss.app for more info")
     
     return embed
 
