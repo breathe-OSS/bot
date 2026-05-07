@@ -187,13 +187,13 @@ def create_aqi_embed(data):
     if pm10 is not None:
         concentrations.append(f"**PM₁₀**: `{pm10:.1f}` µg/m³")
     if no2 is not None:
-        concentrations.append(f"**NO₂**: `{no2:.1f}` ppb")
+        concentrations.append(f"**NO₂**: `{no2 * 1.88:.1f}` µg/m³")
     if so2 is not None:
-        concentrations.append(f"**SO₂**: `{so2:.1f}` ppb")
+        concentrations.append(f"**SO₂**: `{so2 * 2.62:.1f}` µg/m³")
     if co is not None:
-        concentrations.append(f"**CO**: `{co:.2f}` ppm")
+        concentrations.append(f"**CO**: `{co * 1.145:.2f}` mg/m³")
     if ch4 is not None:
-        concentrations.append(f"**CH₄**: `{ch4:.2f}` ppm")
+        concentrations.append(f"**CH₄**: `{ch4 * 0.654:.2f}` mg/m³")
     
     if concentrations:
         embed.add_field(name="Pollutant Concentrations", value="\n".join(concentrations), inline=False)
