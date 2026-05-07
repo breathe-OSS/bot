@@ -75,6 +75,46 @@ async def fetch_aqi_data(zone_id):
                 return None
             return await response.json()
 
+async def fetch_sensor_info():
+    """Fetch all sensor hardware information"""
+    url = "https://api.breatheoss.app/sensor-info"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status != 200:
+                return None
+            return await response.json()
+
+class MoreInfoView(discord.ui.View):
+    def __init__(self, zone_names):
+        super().__init__(timeout=None)
+        self.zone_names = [z.lower() for z in zone_names]
+
+    @discord.ui.button(label="Sensor Information", style=discord.ButtonStyle.secondary, emoji="📊")
+    async def more_info(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=True)
+        data = await fetch_sensor_info()
+        
+        if not data or "sensors" not in data:
+            await interaction.followup.send("⚠️ Could not fetch sensor information.", ephemeral=True)
+            return
+            
+        matching_sensors = [s for s in data["sensors"] if s.get("zone", "").lower() in self.zone_names]
+        
+        if not matching_sensors:
+            await interaction.followup.send("No detailed hardware info available for these locations.", ephemeral=True)
+            return
+            
+        embed = discord.Embed(title="📊 Sensor Hardware Details", color=0x3498db)
+        
+        for s in matching_sensors:
+            name = s.get("name", "Unknown Node")
+            provider = s.get("provider", "N/A")
+            model = s.get("model", "N/A")
+            date = s.get("installation_date", "N/A")
+            embed.add_field(name=f"📍 {name}", value=f"**Provider:** {provider}\n**Model:** {model}\n**Installed:** {date}", inline=False)
+            
+        await interaction.followup.send(embed=embed, ephemeral=True)
+
 def get_us_aqi_category(us_aqi):
     """Generate US AQI category label"""
     if not isinstance(us_aqi, int):
@@ -240,6 +280,8 @@ async def aqi(ctx, *locations):
             return
 
         embeds = []
+        zone_names_found = []
+        has_ag = False
         not_found = False
         fetch_error = False
 
@@ -249,18 +291,24 @@ async def aqi(ctx, *locations):
             if not zone_id:
                 not_found = True
                 continue
+                
+            zone_name = next((z["name"] for z in ZONE_DATA if z["id"] == zone_id), location)
             
             try:
                 data = await fetch_aqi_data(zone_id)
                 if data:
                     embeds.append(create_aqi_embed(data))
+                    zone_names_found.append(zone_name)
+                    if "airgradient" in data.get("source", "").lower():
+                        has_ag = True
                 else:
                     fetch_error = True
             except Exception:
                 fetch_error = True
                 
         if embeds:
-            await ctx.send(embeds=embeds)
+            view = MoreInfoView(zone_names_found) if has_ag else discord.utils.MISSING
+            await ctx.send(embeds=embeds, view=view)
             
         if not_found:
             await ctx.send("⚠️ One or more requested locations were not found. Please check the spelling or use the `/zones` command to see the available list.")
@@ -305,7 +353,9 @@ async def aqi_slash(interaction: discord.Interaction, location: str = None):
                 data = await fetch_aqi_data(zone_id)
                 if data:
                     embed = create_aqi_embed(data)
-                    await interaction.followup.send(embed=embed)
+                    zone_name = next((z["name"] for z in ZONE_DATA if z["id"] == zone_id), location)
+                    view = MoreInfoView([zone_name]) if "airgradient" in data.get("source", "").lower() else discord.utils.MISSING
+                    await interaction.followup.send(embed=embed, view=view)
                 else:
                     await interaction.followup.send(f"⚠️ Could not fetch data for {location}")
             except Exception as e:
