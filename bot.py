@@ -234,22 +234,37 @@ async def aqi(ctx, *locations):
         embed = create_zones_embed()
         await ctx.send(embed=embed)
     else:
+        if len(locations) > 3:
+            await ctx.send("⚠️ You can only request up to 3 locations at a time.")
+            return
+
+        embeds = []
+        not_found = False
+        fetch_error = False
+
         for location in locations:
             zone_id = find_zone_by_name(location)
             
             if not zone_id:
-                await ctx.send(f"⚠️ Location '{location}' not found. Please check the spelling.")
+                not_found = True
                 continue
             
             try:
                 data = await fetch_aqi_data(zone_id)
                 if data:
-                    embed = create_aqi_embed(data)
-                    await ctx.send(embed=embed)
+                    embeds.append(create_aqi_embed(data))
                 else:
-                    await ctx.send(f"⚠️ Could not fetch data for {location}")
-            except Exception as e:
-                await ctx.send(f"⚠️ Error fetching data for {location}: {e}")
+                    fetch_error = True
+            except Exception:
+                fetch_error = True
+                
+        if embeds:
+            await ctx.send(embeds=embeds)
+            
+        if not_found:
+            await ctx.send("⚠️ One or more requested locations were not found. Please check the spelling or use the `/zones` command to see the available list.")
+        elif fetch_error:
+            await ctx.send("⚠️ Error fetching data for one or more locations.")
 
 async def location_autocomplete(
     interaction: discord.Interaction,
@@ -277,7 +292,7 @@ async def aqi_slash(interaction: discord.Interaction, location: str = None):
         zone_id = find_zone_by_name(location)
         
         if not zone_id:
-            await interaction.followup.send(f"⚠️ Location '{location}' not found. Please check the spelling.")
+            await interaction.followup.send(f"⚠️ Location '{location}' not found. Please check the spelling or use the `/zones` command to see the available list.")
         else:
             try:
                 data = await fetch_aqi_data(zone_id)
