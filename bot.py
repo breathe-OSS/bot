@@ -172,6 +172,20 @@ def create_aqi_embed(data):
     if isinstance(humidity, (int, float)):
         embed.add_field(name="Humidity", value=f"{humidity}%", inline=True)
     
+    nodes = data.get('nodes', {})
+    if nodes:
+        for node_name, node_data in nodes.items():
+            node_aqi = node_data.get('aqi', 'N/A')
+            node_us_aqi = node_data.get('us_aqi', 'N/A')
+            node_pm25 = node_data.get('pm2_5', 'N/A')
+            node_pm10 = node_data.get('pm10', 'N/A')
+            
+            pm25_str = f"{node_pm25:.1f}" if isinstance(node_pm25, (int, float)) else str(node_pm25)
+            pm10_str = f"{node_pm10:.1f}" if isinstance(node_pm10, (int, float)) else str(node_pm10)
+            
+            node_text = f"NAQI: **{node_aqi}** • US AQI: **{node_us_aqi}**\nPM₂.₅: `{pm25_str}` µg/m³ • PM₁₀: `{pm10_str}` µg/m³"
+            embed.add_field(name=f"📍 {node_name}", value=node_text, inline=False)
+
     # Add last updated timestamp in IST
     timestamp = data.get('timestamp_unix')
     if timestamp:
