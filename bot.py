@@ -130,7 +130,7 @@ def create_aqi_embed(data):
     else:
         color = 0x808080
 
-    embed = discord.Embed(title=f"Breathe AQI: {zone_name}", color=color)
+    embed = discord.Embed(title=f"Breathe AQI: {zone_name}", url="https://breatheoss.app", color=color)
     
     embed.add_field(name="NAQI", value=f"**{aqi}**", inline=True)
     embed.add_field(name="US AQI", value=f"**{us_aqi}**", inline=True)
@@ -196,8 +196,7 @@ def create_aqi_embed(data):
         date_str = dt_ist.strftime('%d %b %Y')
         embed.add_field(name="Last Updated", value=f"{date_str}\n{time_str} IST", inline=True)
 
-    source = data.get('source', 'Unknown Sensors')
-    embed.set_footer(text=f"Data provided by {source}")
+    embed.set_footer(text="Made with ❤️ by Aaditya & Siddhi • Visit breatheoss.app for more info")
     
     return embed
 
@@ -213,6 +212,7 @@ def create_zones_embed():
     """Create an embed showing all available zones"""
     embed = discord.Embed(
         title="🌍 Available Locations",
+        url="https://breatheoss.app",
         description="List of all the locations you can check for air quality data:",
         color=0x3498db
     )
@@ -220,7 +220,7 @@ def create_zones_embed():
     zones_text = "\n".join([f"{zone['emoji']} **{zone['name']}**" for zone in ZONE_DATA])
     
     embed.add_field(name="Regions", value=zones_text, inline=False)
-    embed.set_footer(text=f"Total: {len(ZONE_DATA)} locations • Use /aqi or .aqi <location> to check air quality")
+    embed.set_footer(text="Made with ❤️ by Aaditya & Siddhi • Visit breatheoss.app for more info")
     
     return embed
 
