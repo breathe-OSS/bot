@@ -100,16 +100,24 @@ def create_aqi_embed(data):
     us_aqi = data.get('us_aqi', 'N/A')
     pollutant = format_pollutant(data.get('main_pollutant', 'N/A'))
     
-    raw_data = data.get('concentrations_raw_ugm3', {})
-    temp = raw_data.get('temp', 'N/A')
-    humidity = raw_data.get('humidity', 'N/A')
+    us_units = data.get('concentrations_us_units', {})
     
-    pm2_5 = raw_data.get('pm2_5')
-    pm10 = raw_data.get('pm10')
-    no2 = raw_data.get('no2')
-    so2 = raw_data.get('so2')
-    co = raw_data.get('co')
-    ch4 = raw_data.get('ch4')
+    # Get latest temp and humidity from history
+    history = data.get('history', [])
+    if history and len(history) > 0:
+        latest = history[-1]
+        temp = latest.get('temp', 'N/A')
+        humidity = latest.get('humidity', 'N/A')
+    else:
+        temp = 'N/A'
+        humidity = 'N/A'
+    
+    pm2_5 = us_units.get('pm2_5')
+    pm10 = us_units.get('pm10')
+    no2 = us_units.get('no2')
+    so2 = us_units.get('so2')
+    co = us_units.get('co')
+    ch4 = us_units.get('ch4')
 
     # Color based on US AQI
     if isinstance(us_aqi, int):
@@ -139,13 +147,13 @@ def create_aqi_embed(data):
     if pm10 is not None:
         concentrations.append(f"**PM₁₀**: `{pm10:.1f}` µg/m³")
     if no2 is not None:
-        concentrations.append(f"**NO₂**: `{no2:.1f}` µg/m³")
+        concentrations.append(f"**NO₂**: `{no2:.1f}` ppb")
     if so2 is not None:
-        concentrations.append(f"**SO₂**: `{so2:.1f}` µg/m³")
+        concentrations.append(f"**SO₂**: `{so2:.1f}` ppb")
     if co is not None:
-        concentrations.append(f"**CO**: `{co/1000:.2f}` mg/m³")
+        concentrations.append(f"**CO**: `{co:.2f}` ppm")
     if ch4 is not None:
-        concentrations.append(f"**CH₄**: `{ch4/1000:.2f}` mg/m³")
+        concentrations.append(f"**CH₄**: `{ch4:.2f}` ppm")
     
     if concentrations:
         embed.add_field(name="Pollutant Concentrations", value="\n".join(concentrations), inline=False)
