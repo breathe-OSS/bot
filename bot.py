@@ -199,8 +199,11 @@ def create_aqi_embed(data):
         embed.add_field(name="Pollutant Concentrations", value="\n".join(concentrations), inline=False)
     
     # Calculate cigarette equivalence
-    if pm2_5 is not None:
-        cigarettes = pm2_5 / 22
+    pm2_5_24h = data.get('averages_24h', {}).get('pm2_5')
+    cig_pm2_5 = pm2_5_24h if pm2_5_24h is not None else pm2_5
+    
+    if cig_pm2_5 is not None:
+        cigarettes = cig_pm2_5 / 22
         embed.add_field(
             name="Equivalent PM₂.₅ inhalation today", 
             value=f"🚬 **≈ {cigarettes:.2f}** cigarettes", 
