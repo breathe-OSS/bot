@@ -311,7 +311,11 @@ async def aqi(ctx, *locations):
                 
         if embeds:
             view = MoreInfoView(zone_names_found) if has_ag else discord.utils.MISSING
-            await ctx.send(embeds=embeds, view=view)
+            for i, embed in enumerate(embeds):
+                if i == len(embeds) - 1:
+                    await ctx.send(embed=embed, view=view)
+                else:
+                    await ctx.send(embed=embed)
             
         if not_found:
             await ctx.send("⚠️ One or more requested locations were not found. Please check the spelling or use the `/zones` command to see the available list.")
