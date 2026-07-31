@@ -525,7 +525,9 @@ async def location_autocomplete(
 @bot.tree.command(name="aqi", description="Check real-time air quality for locations")
 @discord.app_commands.describe(location="Select a location to check air quality")
 @discord.app_commands.autocomplete(location=location_autocomplete)
-@discord.app_commands.checks.cooldown(15, 60, key=lambda i: (i.guild_id, i.user.id))
+@discord.app_commands.allowed_installs(guilds=True, users=True)
+@discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
+@discord.app_commands.checks.cooldown(15, 60, key=lambda i: i.user.id)
 async def aqi_slash(interaction: discord.Interaction, location: str = None):
     """Slash command to check AQI with autocomplete"""
     if not location:
@@ -557,6 +559,8 @@ async def aqi_slash_error(interaction: discord.Interaction, error: discord.app_c
         await interaction.response.send_message(f"⏳ **Slow down!** Please wait {error.retry_after:.1f} seconds before checking the AQI again.", ephemeral=True)
 
 @bot.tree.command(name="zones", description="List all available locations for air quality monitoring")
+@discord.app_commands.allowed_installs(guilds=True, users=True)
+@discord.app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
 async def zones_slash(interaction: discord.Interaction):
     """Slash command to show all available zones"""
     embed = create_zones_embed()
