@@ -307,10 +307,27 @@ async def fetch_quickchart_url(data) -> str | None:
     ist = timezone(timedelta(hours=5, minutes=30))
     times = [datetime.fromtimestamp(h['ts'], tz=ist).strftime('%H:%M') for h in history]
     
+    zone_name = data.get('zone_name', 'Location')
     zone_us_aqi = [h.get('us_aqi', 0) for h in history]
+    source = data.get('source', '').lower()
+    is_airgradient = 'airgradient' in source
+    nodes = data.get('nodes', {})
+    node_count = len(nodes) if isinstance(nodes, dict) else 0
+
+    if is_airgradient:
+        if node_count > 1:
+            primary_label = "Overall Zone Avg"
+        elif node_count == 1:
+            primary_label = list(nodes.keys())[0]
+        else:
+            primary_label = zone_name
+    else:
+        primary_label = "Overall Zone Avg"
+
+    has_multiple_nodes = is_airgradient and node_count > 1
     
     datasets = [{
-        "label": "Overall Zone Avg",
+        "label": primary_label,
         "data": zone_us_aqi,
         "borderColor": "#3498db",
         "backgroundColor": "rgba(52, 152, 219, 0.08)",
@@ -320,8 +337,7 @@ async def fetch_quickchart_url(data) -> str | None:
         "tension": 0.35
     }]
 
-    nodes = data.get('nodes', {})
-    if isinstance(nodes, dict):
+    if has_multiple_nodes:
         ts_map = {h['ts']: i for i, h in enumerate(history)}
         
         for idx, (node_name, node_info) in enumerate(nodes.items()):
