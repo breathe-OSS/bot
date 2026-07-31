@@ -52,7 +52,7 @@ class LocationSelect(discord.ui.Select):
         try:
             data = await fetch_aqi_data(zone_id)
             if data:
-                embed = create_aqi_embed(data)
+                embed = await create_aqi_embed(data)
                 await interaction.followup.send(embed=embed)
             else:
                 await interaction.followup.send("⚠️ Could not fetch data for this location")
@@ -183,7 +183,7 @@ def get_us_aqi_category(us_aqi):
     else:
         return "Hazardous"
 
-def create_aqi_embed(data):
+async def create_aqi_embed(data):
     """Create an embed from AQI data"""
     zone_name = data.get('zone_name', 'Unknown Location')
     aqi = data.get('aqi', 'N/A')
@@ -289,7 +289,7 @@ def create_aqi_embed(data):
         date_str = dt_ist.strftime('%d %b %Y')
         embed.add_field(name="Last Updated", value=f"{date_str}\n{time_str} IST", inline=True)
 
-    chart_url = get_quickchart_url(data)
+    chart_url = await fetch_quickchart_url(data)
     if chart_url:
         embed.set_image(url=chart_url)
 
@@ -299,7 +299,7 @@ def create_aqi_embed(data):
 
 NODE_COLORS = ["#e74c3c", "#2ecc71", "#f1c40f", "#9b59b6", "#e67e22", "#1abc9c", "#e84393"]
 
-def get_quickchart_url(data) -> str | None:
+async def fetch_quickchart_url(data) -> str | None:
     history = data.get('history', [])
     if not history or len(history) < 2:
         return None
@@ -385,8 +385,30 @@ def get_quickchart_url(data) -> str | None:
         }
     }
 
-    encoded_config = urllib.parse.quote(json.dumps(chart_config))
-    return f"https://quickchart.io/chart?c={encoded_config}&bg=1e1f22&w=650&h=300&v=2.9"
+    payload = {
+        "backgroundColor": "#1e1f22",
+        "width": 650,
+        "height": 300,
+        "format": "png",
+        "chart": chart_config
+    }
+
+    session = bot.session
+    try:
+        if session and not session.closed:
+            async with session.post("https://quickchart.io/chart/create", json=payload, timeout=aiohttp.ClientTimeout(total=3)) as resp:
+                if resp.status == 200:
+                    res_data = await resp.json()
+                    if res_data.get("success") and "url" in res_data:
+                        return res_data["url"]
+    except Exception:
+        pass
+
+    encoded_config = urllib.parse.quote(json.dumps(chart_config, separators=(',', ':')))
+    fallback_url = f"https://quickchart.io/chart?c={encoded_config}&bg=1e1f22&w=650&h=300&v=2.9"
+    if len(fallback_url) <= 2048:
+        return fallback_url
+    return None
 
 def find_zone_by_name(location_name):
     """Find a zone by matching location name, ID using exact substring or fuzzy matching"""
@@ -461,7 +483,7 @@ async def aqi(ctx, *locations):
             try:
                 data = await fetch_aqi_data(zone_id)
                 if data:
-                    embeds.append(create_aqi_embed(data))
+                    embeds.append(await create_aqi_embed(data))
                     zone_names_found.append(zone_name)
                     if "airgradient" in data.get("source", "").lower():
                         has_ag = True
@@ -520,7 +542,7 @@ async def aqi_slash(interaction: discord.Interaction, location: str = None):
             try:
                 data = await fetch_aqi_data(zone_id)
                 if data:
-                    embed = create_aqi_embed(data)
+                    embed = await create_aqi_embed(data)
                     zone_name = next((z["name"] for z in ZONE_DATA if z["id"] == zone_id), location)
                     view = MoreInfoView([zone_name]) if "airgradient" in data.get("source", "").lower() else discord.utils.MISSING
                     await interaction.followup.send(embed=embed, view=view)
