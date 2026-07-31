@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 import aiohttp
+import asyncio
 import os
 import json
 from dotenv import load_dotenv
@@ -61,28 +62,64 @@ class DropdownView(discord.ui.View):
         super().__init__()
         self.add_item(LocationSelect())
 
+class BreatheBot(commands.Bot):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.session: aiohttp.ClientSession | None = None
+
+    async def setup_hook(self):
+        # Persistent HTTP session with a 5 second timeout for requests
+        timeout = aiohttp.ClientTimeout(total=5)
+        self.session = aiohttp.ClientSession(timeout=timeout)
+
+    async def close(self):
+        if self.session and not self.session.closed:
+            await self.session.close()
+        await super().close()
+
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix=".", intents=intents)
+bot = BreatheBot(command_prefix=".", intents=intents)
 
 async def fetch_aqi_data(zone_id):
-    """Fetch AQI data for a specific zone"""
+    """Fetch AQI data for a specific zone using persistent session and timeout"""
     url = BREATHE_API_URL.format(zone_id=zone_id)
-    
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status != 200:
-                return None
-            return await response.json()
+    session = bot.session
+    try:
+        if session and not session.closed:
+            async with session.get(url) as response:
+                if response.status != 200:
+                    return None
+                return await response.json()
+        else:
+            timeout = aiohttp.ClientTimeout(total=5)
+            async with aiohttp.ClientSession(timeout=timeout) as temp_session:
+                async with temp_session.get(url) as response:
+                    if response.status != 200:
+                        return None
+                    return await response.json()
+    except (aiohttp.ClientError, asyncio.TimeoutError):
+        return None
 
 async def fetch_sensor_info():
-    """Fetch all sensor hardware information"""
+    """Fetch all sensor hardware information using persistent session and timeout"""
     url = "https://api.breatheoss.app/sensor-info"
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status != 200:
-                return None
-            return await response.json()
+    session = bot.session
+    try:
+        if session and not session.closed:
+            async with session.get(url) as response:
+                if response.status != 200:
+                    return None
+                return await response.json()
+        else:
+            timeout = aiohttp.ClientTimeout(total=5)
+            async with aiohttp.ClientSession(timeout=timeout) as temp_session:
+                async with temp_session.get(url) as response:
+                    if response.status != 200:
+                        return None
+                    return await response.json()
+    except (aiohttp.ClientError, asyncio.TimeoutError):
+        return None
 
 class MoreInfoView(discord.ui.View):
     def __init__(self, zone_names):
