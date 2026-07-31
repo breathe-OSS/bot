@@ -5,6 +5,7 @@ import asyncio
 import difflib
 import os
 import json
+import urllib.parse
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 
@@ -288,9 +289,104 @@ def create_aqi_embed(data):
         date_str = dt_ist.strftime('%d %b %Y')
         embed.add_field(name="Last Updated", value=f"{date_str}\n{time_str} IST", inline=True)
 
+    chart_url = get_quickchart_url(data)
+    if chart_url:
+        embed.set_image(url=chart_url)
+
     embed.set_footer(text="Visit breatheoss.app for more info")
     
     return embed
+
+NODE_COLORS = ["#e74c3c", "#2ecc71", "#f1c40f", "#9b59b6", "#e67e22", "#1abc9c", "#e84393"]
+
+def get_quickchart_url(data) -> str | None:
+    history = data.get('history', [])
+    if not history or len(history) < 2:
+        return None
+
+    ist = timezone(timedelta(hours=5, minutes=30))
+    times = [datetime.fromtimestamp(h['ts'], tz=ist).strftime('%H:%M') for h in history]
+    
+    zone_us_aqi = [h.get('us_aqi', 0) for h in history]
+    
+    datasets = [{
+        "label": "Overall Zone Avg",
+        "data": zone_us_aqi,
+        "borderColor": "#3498db",
+        "backgroundColor": "rgba(52, 152, 219, 0.08)",
+        "borderWidth": 4,
+        "pointRadius": 0,
+        "fill": True,
+        "tension": 0.35
+    }]
+
+    nodes = data.get('nodes', {})
+    if isinstance(nodes, dict):
+        ts_map = {h['ts']: i for i, h in enumerate(history)}
+        
+        for idx, (node_name, node_info) in enumerate(nodes.items()):
+            node_history = node_info.get('history', []) if isinstance(node_info, dict) else []
+            if not node_history:
+                continue
+                
+            node_data = [None] * len(history)
+            for nh in node_history:
+                ts = nh.get('ts')
+                if ts in ts_map:
+                    node_data[ts_map[ts]] = nh.get('us_aqi')
+            
+            color = NODE_COLORS[idx % len(NODE_COLORS)]
+            datasets.append({
+                "label": f"{node_name} Node",
+                "data": node_data,
+                "borderColor": color,
+                "borderWidth": 2,
+                "pointRadius": 2,
+                "pointBackgroundColor": color,
+                "fill": False,
+                "tension": 0.35,
+                "spanGaps": True
+            })
+
+    has_nodes = len(datasets) > 1
+
+    chart_config = {
+        "type": "line",
+        "data": {
+            "labels": times,
+            "datasets": datasets
+        },
+        "options": {
+            "title": {
+                "display": True,
+                "text": f"24-Hour US AQI Trend — {data.get('zone_name', 'Location')}",
+                "fontColor": "#ffffff",
+                "fontSize": 14
+            },
+            "legend": {
+                "display": has_nodes,
+                "position": "bottom",
+                "labels": {
+                    "fontColor": "#ffffff",
+                    "fontSize": 11,
+                    "boxWidth": 12
+                }
+            },
+            "scales": {
+                "xAxes": [{
+                    "gridLines": {"color": "rgba(255, 255, 255, 0.1)"},
+                    "ticks": {"fontColor": "#aaaaaa", "maxTicksLimit": 8}
+                }],
+                "yAxes": [{
+                    "gridLines": {"color": "rgba(255, 255, 255, 0.1)"},
+                    "ticks": {"fontColor": "#aaaaaa", "beginAtZero": True}
+                }]
+            }
+        }
+    }
+
+    encoded_config = urllib.parse.quote(json.dumps(chart_config))
+    return f"https://quickchart.io/chart?c={encoded_config}&bg=1e1f22&w=650&h=300&v=2.9"
 
 def find_zone_by_name(location_name):
     """Find a zone by matching location name, ID using exact substring or fuzzy matching"""
