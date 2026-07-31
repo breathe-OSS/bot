@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import aiohttp
 import asyncio
+import difflib
 import os
 import json
 from dotenv import load_dotenv
@@ -36,12 +37,12 @@ def format_pollutant(pollutant):
         return pollutant_upper
 
 class LocationSelect(discord.ui.Select):
-    def __init__(self):
+    def __init__(self, zones_chunk, placeholder="Select a region..."):
         options = [
             discord.SelectOption(label=zone["name"], value=zone["id"], emoji=zone["emoji"])
-            for zone in ZONE_DATA
+            for zone in zones_chunk
         ]
-        super().__init__(placeholder="Select a region...", min_values=1, max_values=1, options=options)
+        super().__init__(placeholder=placeholder, min_values=1, max_values=1, options=options)
 
     async def callback(self, interaction: discord.Interaction):
         zone_id = self.values[0]
@@ -60,7 +61,18 @@ class LocationSelect(discord.ui.Select):
 class DropdownView(discord.ui.View):
     def __init__(self):
         super().__init__()
-        self.add_item(LocationSelect())
+        chunk_size = 25
+        chunks = [ZONE_DATA[i:i + chunk_size] for i in range(0, len(ZONE_DATA), chunk_size)]
+        
+        for chunk in chunks:
+            if len(chunks) == 1:
+                placeholder = "Select a region..."
+            else:
+                first_name = chunk[0]["name"]
+                last_name = chunk[-1]["name"]
+                placeholder = f"Select a region ({first_name} - {last_name})..."
+            
+            self.add_item(LocationSelect(chunk, placeholder=placeholder))
 
 class BreatheBot(commands.Bot):
     def __init__(self, *args, **kwargs):
@@ -281,11 +293,27 @@ def create_aqi_embed(data):
     return embed
 
 def find_zone_by_name(location_name):
-    """Find a zone by matching the location name (case insensitive)"""
-    location_lower = location_name.lower()
+    """Find a zone by matching location name, ID using exact substring or fuzzy matching"""
+    if not location_name:
+        return None
+
+    location_lower = location_name.strip().lower()
+
     for zone in ZONE_DATA:
-        if zone["name"].lower() == location_lower:
+        if zone["name"].lower() == location_lower or zone["id"].lower() == location_lower:
             return zone["id"]
+
+    for zone in ZONE_DATA:
+        zname = zone["name"].lower()
+        zid = zone["id"].lower()
+        if zname.startswith(location_lower) or zid.startswith(location_lower) or location_lower in zname or location_lower in zid:
+            return zone["id"]
+
+    zone_names_map = {zone["name"].lower(): zone["id"] for zone in ZONE_DATA}
+    matches = difflib.get_close_matches(location_lower, zone_names_map.keys(), n=1, cutoff=0.6)
+    if matches:
+        return zone_names_map[matches[0]]
+
     return None
 
 def create_zones_embed():
@@ -425,4 +453,5 @@ async def on_ready():
     except Exception as e:
         print(f"⚠️ Failed to sync commands: {e}")
 
-bot.run(TOKEN)
+if __name__ == "__main__":
+    bot.run(TOKEN)
