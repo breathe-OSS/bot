@@ -265,6 +265,15 @@ async def create_aqi_embed(data):
     if isinstance(humidity, (int, float)):
         embed.add_field(name="Humidity", value=f"{humidity}%", inline=True)
     
+    # Display warning message if present in API response
+    warning = data.get('warning')
+    if warning:
+        if isinstance(warning, list):
+            warning_val = "\n".join([f"⚠️ {w}" for w in warning])
+        else:
+            warning_val = f"⚠️ {warning}"
+        embed.add_field(name="⚠️ Warning", value=warning_val, inline=False)
+
     nodes = data.get('nodes', {})
     if nodes:
         for node_name, node_data in nodes.items():
