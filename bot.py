@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 import aiohttp
+from aiohttp import web
 import asyncio
 import difflib
 import os
@@ -75,17 +76,38 @@ class DropdownView(discord.ui.View):
             
             self.add_item(LocationSelect(chunk, placeholder=placeholder))
 
+async def healthcheck_handler(request):
+    return web.Response(text="OK", status=200)
+
 class BreatheBot(commands.Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.session: aiohttp.ClientSession | None = None
+        self.runner: web.AppRunner | None = None
 
     async def setup_hook(self):
         # Persistent HTTP session with a 5 second timeout for requests
         timeout = aiohttp.ClientTimeout(total=5)
         self.session = aiohttp.ClientSession(timeout=timeout)
 
+        # Health check HTTP server for Pterodactyl
+        port = os.getenv("SERVER_PORT") or os.getenv("PORT") or os.getenv("HEALTH_CHECK_PORT")
+        if port:
+            try:
+                app = web.Application()
+                app.router.add_get("/", healthcheck_handler)
+                app.router.add_get("/health", healthcheck_handler)
+                self.runner = web.AppRunner(app)
+                await self.runner.setup()
+                site = web.TCPSite(self.runner, "0.0.0.0", int(port))
+                await site.start()
+                print(f"✅ Health check HTTP server listening on port {port}", flush=True)
+            except Exception as e:
+                print(f"⚠️ Failed to start health check HTTP server: {e}", flush=True)
+
     async def close(self):
+        if self.runner:
+            await self.runner.cleanup()
         if self.session and not self.session.closed:
             await self.session.close()
         await super().close()
@@ -593,12 +615,12 @@ async def zones_slash(interaction: discord.Interaction):
 
 @bot.event
 async def on_ready():
-    print(f"✅ Logged in as {bot.user}")
+    print(f"✅ Logged in as {bot.user}", flush=True)
     try:
         synced = await bot.tree.sync()
-        print(f"✅ Synced {len(synced)} slash command(s)")
+        print(f"✅ Synced {len(synced)} slash command(s)", flush=True)
     except Exception as e:
-        print(f"⚠️ Failed to sync commands: {e}")
+        print(f"⚠️ Failed to sync commands: {e}", flush=True)
 
 if __name__ == "__main__":
     bot.run(TOKEN)
