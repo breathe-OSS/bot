@@ -7,6 +7,7 @@ import difflib
 import os
 import json
 import urllib.parse
+import time
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 
@@ -104,6 +105,12 @@ class BreatheBot(commands.Bot):
                 print(f"✅ Health check HTTP server listening on port {port}", flush=True)
             except Exception as e:
                 print(f"⚠️ Failed to start health check HTTP server: {e}", flush=True)
+
+        try:
+            synced = await self.tree.sync()
+            print(f"✅ Synced {len(synced)} slash command(s)", flush=True)
+        except Exception as e:
+            print(f"⚠️ Failed to sync commands: {e}", flush=True)
 
     async def close(self):
         if self.runner:
@@ -557,15 +564,26 @@ async def aqi_error(ctx, error):
     if isinstance(error, commands.CommandOnCooldown):
         await ctx.send(f"⏳ **Slow down!** Please wait {error.retry_after:.1f} seconds before checking the AQI again.")
 
+_autocomplete_last_keystroke: dict[int, float] = {}
+
 async def location_autocomplete(
     interaction: discord.Interaction,
     current: str,
 ) -> list[discord.app_commands.Choice[str]]:
-    """Provide autocomplete suggestions for location names"""
+    user_id = interaction.user.id
+    now = time.monotonic()
+    _autocomplete_last_keystroke[user_id] = now
+
+    await asyncio.sleep(0.2)
+
+    if _autocomplete_last_keystroke.get(user_id) != now:
+        return []
+
+    current_lower = current.strip().lower()
     choices = [
         discord.app_commands.Choice(name=f"{zone['emoji']} {zone['name']}", value=zone['name'].lower())
         for zone in ZONE_DATA
-        if current.lower() in zone['name'].lower()
+        if not current_lower or current_lower in zone['name'].lower()
     ]
     return choices[:25]
 
@@ -613,14 +631,31 @@ async def zones_slash(interaction: discord.Interaction):
     embed = create_zones_embed()
     await interaction.response.send_message(embed=embed)
 
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
+    original = getattr(error, 'original', error)
+
+    if isinstance(original, discord.errors.HTTPException):
+        if original.status == 429 or original.code in (10062, 40060):
+            return
+
+    # Check cooldowns if not already caught
+    if isinstance(error, discord.app_commands.CommandOnCooldown):
+        try:
+            if not interaction.response.is_done():
+                await interaction.response.send_message(
+                    f"⏳ **Slow down!** Please wait {error.retry_after:.1f} seconds.",
+                    ephemeral=True
+                )
+        except Exception:
+            pass
+        return
+
+    print(f"⚠️ App command error: {error}", flush=True)
+
 @bot.event
 async def on_ready():
     print(f"✅ Logged in as {bot.user}", flush=True)
-    try:
-        synced = await bot.tree.sync()
-        print(f"✅ Synced {len(synced)} slash command(s)", flush=True)
-    except Exception as e:
-        print(f"⚠️ Failed to sync commands: {e}", flush=True)
 
 if __name__ == "__main__":
     bot.run(TOKEN)
