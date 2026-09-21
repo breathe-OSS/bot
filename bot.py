@@ -611,18 +611,37 @@ async def location_autocomplete(
     now = time.monotonic()
     _autocomplete_last_keystroke[user_id] = now
 
-    await asyncio.sleep(0.2)
+    await asyncio.sleep(0.15)
 
     if _autocomplete_last_keystroke.get(user_id) != now:
         return []
 
-    current_lower = current.strip().lower()
-    choices = [
-        discord.app_commands.Choice(name=f"{zone['emoji']} {zone['name']}", value=zone['name'].lower())
-        for zone in ZONE_DATA
-        if not current_lower or current_lower in zone['name'].lower()
+    current_clean = current.strip().lower()
+
+    if not current_clean:
+        return [
+            discord.app_commands.Choice(name=f"{zone['emoji']} {zone['name']}", value=zone["name"])
+            for zone in ZONE_DATA[:25]
+        ]
+
+    starts_with = []
+    contains = []
+
+    for zone in ZONE_DATA:
+        zname_lower = zone["name"].lower()
+        zid_lower = zone["id"].lower()
+
+        if zname_lower.startswith(current_clean) or zid_lower.startswith(current_clean):
+            starts_with.append(zone)
+        elif current_clean in zname_lower or current_clean in zid_lower:
+            contains.append(zone)
+
+    matched_zones = (starts_with + contains)[:25]
+
+    return [
+        discord.app_commands.Choice(name=f"{zone['emoji']} {zone['name']}", value=zone["name"])
+        for zone in matched_zones
     ]
-    return choices[:25]
 
 @bot.tree.command(name="aqi", description="Check real-time air quality for locations")
 @discord.app_commands.describe(location="Select a location to check air quality")
