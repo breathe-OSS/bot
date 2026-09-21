@@ -692,7 +692,8 @@ async def on_app_command_error(interaction: discord.Interaction, error: discord.
 
 @bot.event
 async def on_ready():
-    print(f"✅ Logged in as {bot.user}", flush=True)
+    print(f"Logged in as {bot.user}", flush=True)
+    print("Bot is ready and connected to Discord Gateway.", flush=True)
 
 if __name__ == "__main__":
     bot.run(TOKEN)
