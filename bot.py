@@ -657,5 +657,42 @@ async def on_app_command_error(interaction: discord.Interaction, error: discord.
 async def on_ready():
     print(f"✅ Logged in as {bot.user}", flush=True)
 
+async def check_proxy_health(proxy_url: str) -> bool:
+    """Verify if the proxy is online and can reach Discord API"""
+    try:
+        timeout = aiohttp.ClientTimeout(total=4)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get("https://discord.com/api/v10/gateway", proxy=proxy_url) as resp:
+                return resp.status == 200
+    except Exception:
+        return False
+
+def get_proxy():
+    proxy_url = os.getenv("DISCORD_PROXY")
+    if not proxy_url:
+        host = os.getenv("PROXY_HOST")
+        port = os.getenv("PROXY_PORT", "8888")
+        user = os.getenv("PROXY_USER")
+        password = os.getenv("PROXY_PASS")
+        if host:
+            if user and password:
+                proxy_url = f"http://{user}:{password}@{host}:{port}"
+            else:
+                proxy_url = f"http://{host}:{port}"
+
+    if not proxy_url:
+        return None
+
+    # Test proxy connectivity before launching the bot
+    print("Testing Discord proxy connection...", flush=True)
+    is_healthy = asyncio.run(check_proxy_health(proxy_url))
+    if is_healthy:
+        print("Proxy healthy, Connecting to Discord via proxy.", flush=True)
+        return proxy_url
+    else:
+        print("Proxy is unreachable or failing. Falling back to direct connection.", flush=True)
+        return None
+
 if __name__ == "__main__":
-    bot.run(TOKEN)
+    active_proxy = get_proxy()
+    bot.run(TOKEN, proxy=active_proxy)
